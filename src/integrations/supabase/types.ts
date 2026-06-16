@@ -14,7 +14,119 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      review_logs: {
+        Row: {
+          id: string
+          quality: number
+          reviewed_at: string
+          user_id: string
+          word_id: string
+        }
+        Insert: {
+          id?: string
+          quality: number
+          reviewed_at?: string
+          user_id: string
+          word_id: string
+        }
+        Update: {
+          id?: string
+          quality?: number
+          reviewed_at?: string
+          user_id?: string
+          word_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_logs_word_id_fkey"
+            columns: ["word_id"]
+            isOneToOne: false
+            referencedRelation: "words"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      words: {
+        Row: {
+          correct_count: number
+          created_at: string
+          definition: string | null
+          due_date: string
+          ease_factor: number
+          example: string | null
+          id: string
+          interval_days: number
+          last_reviewed_at: string | null
+          part_of_speech: string | null
+          repetitions: number
+          review_count: number
+          translation: string | null
+          updated_at: string
+          user_id: string
+          word: string
+        }
+        Insert: {
+          correct_count?: number
+          created_at?: string
+          definition?: string | null
+          due_date?: string
+          ease_factor?: number
+          example?: string | null
+          id?: string
+          interval_days?: number
+          last_reviewed_at?: string | null
+          part_of_speech?: string | null
+          repetitions?: number
+          review_count?: number
+          translation?: string | null
+          updated_at?: string
+          user_id: string
+          word: string
+        }
+        Update: {
+          correct_count?: number
+          created_at?: string
+          definition?: string | null
+          due_date?: string
+          ease_factor?: number
+          example?: string | null
+          id?: string
+          interval_days?: number
+          last_reviewed_at?: string | null
+          part_of_speech?: string | null
+          repetitions?: number
+          review_count?: number
+          translation?: string | null
+          updated_at?: string
+          user_id?: string
+          word?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
