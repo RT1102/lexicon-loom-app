@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,12 +47,6 @@ function AuthPage() {
     nav({ to: "/dashboard" });
   }
 
-  async function googleSignIn() {
-    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + "/dashboard" });
-    if (result.error) return toast.error("Google sign-in failed");
-    if (result.redirected) return;
-    nav({ to: "/dashboard" });
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
@@ -78,16 +71,8 @@ function AuthPage() {
             </TabsContent>
           </Tabs>
 
-          <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-widest text-muted-foreground">
-            <div className="h-px flex-1 bg-border" /> or <div className="h-px flex-1 bg-border" />
-          </div>
-
-          <Button onClick={googleSignIn} variant="outline" className="w-full" disabled={loading}>
-            Continue with Google
-          </Button>
-
           <p className="mt-6 text-center text-xs text-muted-foreground">
-            Any email works — Gmail, QQ, WeChat email, or your school address.
+            Use any email — Gmail, QQ, WeChat email, or your school address.
           </p>
         </div>
       </div>
