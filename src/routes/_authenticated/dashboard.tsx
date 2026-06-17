@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Brain, BookOpen, CheckCircle2, Clock, TrendingUp, Flame } from "lucide-react";
-import { masteryLevel } from "@/lib/sm2";
+import { getStage, STAGES } from "@/lib/sm2";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -37,7 +37,7 @@ function Dashboard() {
   const now = new Date();
   const dueToday = words.filter((w) => new Date(w.due_date) <= now).length;
   const totalWords = words.length;
-  const mastered = words.filter((w) => masteryLevel(w.repetitions, w.ease_factor) === "Mastered").length;
+  const mastered = words.filter((w) => w.repetitions >= 7).length;
   const totalReviews = words.reduce((s, w) => s + w.review_count, 0);
   const accuracy = totalReviews > 0 ? Math.round(100 * words.reduce((s, w) => s + w.correct_count, 0) / totalReviews) : 0;
 
@@ -58,9 +58,10 @@ function Dashboard() {
     return { day: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }), reviews: count };
   });
 
-  // mastery distribution
-  const buckets = { New: 0, Learning: 0, Familiar: 0, Reviewing: 0, Mastered: 0 } as Record<string, number>;
-  for (const w of words) buckets[masteryLevel(w.repetitions, w.ease_factor)]++;
+  // stage distribution (Ebbinghaus stages)
+  const buckets: Record<string, number> = {};
+  for (const s of STAGES) buckets[s.label] = 0;
+  for (const w of words) buckets[getStage(w.repetitions).label]++;
 
   return (
     <div className="space-y-8">
@@ -99,18 +100,23 @@ function Dashboard() {
         </div>
 
         <div className="paper-card p-6">
-          <h2 className="font-serif text-xl font-semibold">Mastery</h2>
+          <h2 className="font-serif text-xl font-semibold">Memory stages</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Based on the forgetting curve · 1/2/4/7/15/30 day schedule</p>
           <div className="mt-5 space-y-3">
-            {(["New", "Learning", "Familiar", "Reviewing", "Mastered"] as const).map((k) => {
-              const pct = totalWords ? (buckets[k] / totalWords) * 100 : 0;
+            {STAGES.map((s) => {
+              const n = buckets[s.label] || 0;
+              const pct = totalWords ? (n / totalWords) * 100 : 0;
               return (
-                <div key={k}>
+                <div key={s.label}>
                   <div className="flex justify-between text-sm">
-                    <span>{k}</span>
-                    <span className="text-muted-foreground">{buckets[k]}</span>
+                    <span className="inline-flex items-center gap-2">
+                      <span className="size-2 rounded-full" style={{ background: s.swatch }} />
+                      {s.label}
+                    </span>
+                    <span className="text-muted-foreground">{n}</span>
                   </div>
                   <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
-                    <div className="h-full bg-primary" style={{ width: pct + "%" }} />
+                    <div className="h-full" style={{ width: pct + "%", background: s.swatch }} />
                   </div>
                 </div>
               );
