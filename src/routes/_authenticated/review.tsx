@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { applySM2, masteryLevel } from "@/lib/sm2";
+import { applySM2, getStage } from "@/lib/sm2";
 import { toast } from "sonner";
 import { CheckCircle2 } from "lucide-react";
 
@@ -84,7 +84,10 @@ function ReviewPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <span>{idx + 1} / {queue.length} due</span>
-        <span>{masteryLevel(current.repetitions, current.ease_factor)}</span>
+        <span className={"inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium " + getStage(current.repetitions).className}>
+          <span className="size-1.5 rounded-full" style={{ background: getStage(current.repetitions).swatch }} />
+          {getStage(current.repetitions).label}
+        </span>
       </div>
       <div className="h-1 overflow-hidden rounded-full bg-muted">
         <div className="h-full bg-primary transition-all" style={{ width: `${(idx / queue.length) * 100}%` }} />
