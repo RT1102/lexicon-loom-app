@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      folders: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -78,6 +105,7 @@ export type Database = {
           due_date: string
           ease_factor: number
           example: string | null
+          folder_id: string | null
           id: string
           interval_days: number
           last_reviewed_at: string | null
@@ -96,6 +124,7 @@ export type Database = {
           due_date?: string
           ease_factor?: number
           example?: string | null
+          folder_id?: string | null
           id?: string
           interval_days?: number
           last_reviewed_at?: string | null
@@ -114,6 +143,7 @@ export type Database = {
           due_date?: string
           ease_factor?: number
           example?: string | null
+          folder_id?: string | null
           id?: string
           interval_days?: number
           last_reviewed_at?: string | null
@@ -125,7 +155,15 @@ export type Database = {
           user_id?: string
           word?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "words_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
