@@ -62,14 +62,14 @@ const FIELD_SPLIT = /\s*(?:\t|\||—|–|\s-\s|:)\s*/;
 
 function parseManualText(text: string): ParsedWord[] {
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  return lines
-    .map((line) => {
-      const parts = line.split(FIELD_SPLIT).map((p) => p.trim());
-      const [word, definition = "", part_of_speech = "", example = ""] = parts;
-      if (!word) return null;
-      return { word, definition, part_of_speech, example };
-    })
-    .filter((w): w is ParsedWord => !!w && w.word.length > 0 && w.word.length < 200);
+  const out: ParsedWord[] = [];
+  for (const line of lines) {
+    const parts = line.split(FIELD_SPLIT).map((p) => p.trim());
+    const [word, definition = "", part_of_speech = "", example = ""] = parts;
+    if (!word || word.length >= 200) continue;
+    out.push({ word, definition, part_of_speech, example });
+  }
+  return out;
 }
 
 function ImportPage() {
