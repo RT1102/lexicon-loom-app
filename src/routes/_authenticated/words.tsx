@@ -96,7 +96,7 @@ function WordsPage() {
       user_id: u.user.id,
       word: editing.word!.trim(),
       definition: editing.definition || null,
-      translation: editing.translation || null,
+      translation: null,
       part_of_speech: editing.part_of_speech || null,
       example: editing.example || null,
     };
@@ -315,6 +315,28 @@ function WordsPage() {
                     {folders.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="sm" variant="destructive" className="h-8"><Trash2 className="mr-1 size-4" /> Delete</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete {selectedCount} {selectedCount === 1 ? "word" : "words"}?</AlertDialogTitle>
+                      <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={async () => {
+                        const ids = Array.from(selected);
+                        const { error } = await supabase.from("words").delete().in("id", ids);
+                        if (error) return toast.error(error.message);
+                        toast.success(`Deleted ${ids.length} ${ids.length === 1 ? "word" : "words"}`);
+                        setSelected(new Set());
+                        load();
+                      }}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                 <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}><X className="size-4" /></Button>
               </div>
             )}
@@ -336,7 +358,6 @@ function WordsPage() {
                       <th className="w-6 px-1 py-3"></th>
                       <th className="px-4 py-3">Word</th>
                       <th className="px-4 py-3">Definition</th>
-                      <th className="px-4 py-3">Translation</th>
                       <th className="px-4 py-3">Stage</th>
                       <th className="px-4 py-3">Next review</th>
                       <th className="px-4 py-3 text-right">Actions</th>
@@ -365,8 +386,7 @@ function WordsPage() {
                             <div className="font-serif text-base font-semibold">{w.word}</div>
                             {w.part_of_speech && <div className="text-xs italic text-muted-foreground">{w.part_of_speech}</div>}
                           </td>
-                          <td className="max-w-xs px-4 py-3 text-muted-foreground">{w.definition}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{w.translation}</td>
+                          <td className="max-w-md px-4 py-3 text-muted-foreground">{w.definition}</td>
                           <td className="px-4 py-3">
                             <span
                               className={"inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium " + stage.className}
@@ -447,18 +467,12 @@ function WordDialog({ children, editing, setEditing, onSave }: { children: React
             <Label>Word *</Label>
             <Input value={editing?.word || ""} onChange={(e) => setEditing({ ...(editing || {}), word: e.target.value })} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Part of speech</Label>
-              <Select value={editing?.part_of_speech || ""} onValueChange={(v) => setEditing({ ...(editing || {}), part_of_speech: v })}>
-                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
-                <SelectContent>{POS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Translation</Label>
-              <Input value={editing?.translation || ""} onChange={(e) => setEditing({ ...(editing || {}), translation: e.target.value })} />
-            </div>
+          <div className="space-y-2">
+            <Label>Part of speech</Label>
+            <Select value={editing?.part_of_speech || ""} onValueChange={(v) => setEditing({ ...(editing || {}), part_of_speech: v })}>
+              <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+              <SelectContent>{POS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label>Definition</Label>
