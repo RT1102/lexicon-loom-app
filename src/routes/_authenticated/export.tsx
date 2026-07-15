@@ -1,13 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { FileSpreadsheet, FileType } from "lucide-react";
 import { masteryLevel } from "@/lib/sm2";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/_authenticated/export")({
   head: () => ({ meta: [{ title: "Export — Lexica" }] }),
