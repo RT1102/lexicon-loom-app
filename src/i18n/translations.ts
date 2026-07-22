@@ -477,7 +477,7 @@ const zh: Dict = {
   },
 };
 
-export const TRANSLATIONS: Record<Language, Dict> = { en, zh } as unknown as Record<Language, Dict>;
+export const TRANSLATIONS: Record<Language, Dict> = { en, zh };
 
 // Look up a nested key like "nav.dashboard". Returns the key itself if missing.
 export function lookup(dict: Dict, key: string): string {
