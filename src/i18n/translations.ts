@@ -12,7 +12,7 @@ export const LANGUAGES: { code: Language; label: string; nativeLabel: string }[]
 // Recursive string dictionary.
 export type Dict = { [k: string]: string | Dict };
 
-const en = {
+const en: Dict = {
   common: {
     save: "Save",
     cancel: "Cancel",
@@ -244,9 +244,9 @@ const en = {
     notFoundTitle: "Page not found",
     notFoundBody: "The page you're looking for doesn't exist or has been moved.",
   },
-} as const;
+};
 
-const zh: typeof en = {
+const zh: Dict = {
   common: {
     save: "保存",
     cancel: "取消",
