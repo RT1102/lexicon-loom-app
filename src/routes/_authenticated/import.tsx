@@ -7,6 +7,7 @@ import { Upload, FileText, FileSpreadsheet, Download } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
+import { useLanguage } from "@/i18n/LanguageProvider";
 
 export const Route = createFileRoute("/_authenticated/import")({
   head: () => ({ meta: [{ title: "Import — Lexica" }] }),
@@ -21,8 +22,6 @@ interface ParsedWord {
 }
 
 const REQUIRED_HEADERS = ["word", "definition"];
-const OPTIONAL_HEADERS = ["part_of_speech", "example"];
-const ALL_HEADERS = [...REQUIRED_HEADERS, ...OPTIONAL_HEADERS];
 
 const HEADER_ALIASES: Record<string, string> = {
   word: "word", term: "word", vocabulary: "word", english: "word",
@@ -56,8 +55,6 @@ function validateHeaders(headers: string[]): { ok: boolean; missing: string[] } 
   return { ok: missing.length === 0, missing };
 }
 
-// 4-field manual format: word | definition | part_of_speech | example
-// Accepts these delimiters between fields: tab, |, em dash (—), en dash (–), hyphen ( - ), colon (:)
 const FIELD_SPLIT = /\s*(?:\t|\||—|–|\s-\s|:)\s*/;
 
 function parseManualText(text: string): ParsedWord[] {
@@ -73,10 +70,13 @@ function parseManualText(text: string): ParsedWord[] {
 }
 
 function ImportPage() {
+  const { t } = useLanguage();
   const nav = useNavigate();
   const [parsed, setParsed] = useState<ParsedWord[]>([]);
   const [working, setWorking] = useState(false);
   const [pasted, setPasted] = useState("");
+
+  const foundToast = (n: number) => toast.success(n === 1 ? t("imp.foundOne") : t("imp.foundOther", { n }));
 
   async function handleFile(file: File) {
     setWorking(true);
@@ -90,7 +90,7 @@ function ImportPage() {
         const headers = res.meta.fields || [];
         const check = validateHeaders(headers);
         if (!check.ok) {
-          toast.error(`Missing required column(s): ${check.missing.join(", ")}. Required headers: word, definition.`);
+          toast.error(t("imp.missingCols", { cols: check.missing.join(", ") }));
           setWorking(false);
           return;
         }
@@ -103,7 +103,7 @@ function ImportPage() {
         const headers = data.length > 0 ? Object.keys(data[0]) : [];
         const check = validateHeaders(headers);
         if (!check.ok) {
-          toast.error(`Missing required column(s): ${check.missing.join(", ")}. Required headers: word, definition.`);
+          toast.error(t("imp.missingCols", { cols: check.missing.join(", ") }));
           setWorking(false);
           return;
         }
@@ -112,19 +112,19 @@ function ImportPage() {
         const text = await file.text();
         rows = parseManualText(text);
       } else {
-        toast.error("Unsupported file type. Use .csv, .xlsx, .xls, or .txt");
+        toast.error(t("imp.unsupportedType"));
         setWorking(false);
         return;
       }
 
       if (rows.length === 0) {
-        toast.error("No valid rows found. Check the format and try again.");
+        toast.error(t("imp.noValidRows"));
       } else {
         setParsed(rows);
-        toast.success(`Found ${rows.length} ${rows.length === 1 ? "word" : "words"}`);
+        foundToast(rows.length);
       }
     } catch (err: any) {
-      toast.error("Failed to parse file: " + err.message);
+      toast.error(t("imp.parseFail", { msg: err.message }));
     } finally {
       setWorking(false);
     }
@@ -132,9 +132,9 @@ function ImportPage() {
 
   function parsePasted() {
     const rows = parseManualText(pasted);
-    if (rows.length === 0) return toast.error("No valid lines found. Use: word | definition | part of speech | example");
+    if (rows.length === 0) return toast.error(t("imp.noValidLines"));
     setParsed(rows);
-    toast.success(`Found ${rows.length} ${rows.length === 1 ? "word" : "words"}`);
+    foundToast(rows.length);
   }
 
   function downloadTemplate() {
@@ -167,7 +167,7 @@ function ImportPage() {
         return;
       }
     }
-    toast.success(`Imported ${payload.length} words`);
+    toast.success(t("imp.importedN", { n: payload.length }));
     setWorking(false);
     nav({ to: "/words" });
   }
@@ -175,36 +175,30 @@ function ImportPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="font-serif text-4xl font-semibold tracking-tight">Import your words</h1>
-        <p className="mt-1 text-muted-foreground">Use the strict format below so every word is detected correctly.</p>
+        <h1 className="font-serif text-4xl font-semibold tracking-tight">{t("imp.title")}</h1>
+        <p className="mt-1 text-muted-foreground">{t("imp.subtitle")}</p>
       </div>
 
       <div className="paper-card bg-muted/30 p-5 text-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="font-medium text-foreground">Required format</div>
-            <p className="mt-1 text-muted-foreground">
-              Spreadsheets / CSV: first row must be headers <code className="rounded bg-paper px-1">word</code>, <code className="rounded bg-paper px-1">definition</code>
-              {" "}(required), plus optional <code className="rounded bg-paper px-1">part_of_speech</code>, <code className="rounded bg-paper px-1">example</code>.
-            </p>
-            <p className="mt-1 text-muted-foreground">
-              Text / paste: one entry per line in this exact order — <code className="rounded bg-paper px-1">word | definition | part of speech | example</code>.
-              Separators allowed: <code>|</code>, tab, <code> - </code>, <code>:</code>, em/en dash.
-            </p>
+            <div className="font-medium text-foreground">{t("imp.requiredFormat")}</div>
+            <p className="mt-1 text-muted-foreground">{t("imp.csvRule")}</p>
+            <p className="mt-1 text-muted-foreground">{t("imp.textRule")} {t("imp.separators")}</p>
           </div>
-          <Button variant="outline" size="sm" onClick={downloadTemplate}><Download className="mr-2 size-4" /> Download CSV template</Button>
+          <Button variant="outline" size="sm" onClick={downloadTemplate}><Download className="mr-2 size-4" /> {t("imp.downloadTemplate")}</Button>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="paper-card p-6">
-          <h2 className="font-serif text-xl font-semibold">From a file</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Accepts .csv, .xlsx, .xls, .txt</p>
+          <h2 className="font-serif text-xl font-semibold">{t("imp.fromFile")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("imp.fromFileHint")}</p>
 
           <label className="mt-5 flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-border bg-muted/30 px-6 py-12 text-center transition-colors hover:border-primary hover:bg-muted/50">
             <Upload className="size-8 text-muted-foreground" />
-            <span className="font-medium">Choose a file</span>
-            <span className="text-xs text-muted-foreground">.csv, .xlsx, .xls, .txt</span>
+            <span className="font-medium">{t("imp.chooseFile")}</span>
+            <span className="text-xs text-muted-foreground">{t("imp.fileTypes")}</span>
             <input
               type="file"
               accept=".txt,.csv,.xlsx,.xls"
@@ -214,14 +208,14 @@ function ImportPage() {
           </label>
 
           <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1"><FileSpreadsheet className="size-3" /> CSV / Excel with headers</div>
-            <div className="flex items-center gap-1"><FileText className="size-3" /> .txt with field delimiters</div>
+            <div className="flex items-center gap-1"><FileSpreadsheet className="size-3" /> {t("imp.csvExcelHeaders")}</div>
+            <div className="flex items-center gap-1"><FileText className="size-3" /> {t("imp.txtDelimiters")}</div>
           </div>
         </div>
 
         <div className="paper-card p-6">
-          <h2 className="font-serif text-xl font-semibold">Paste a list</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Format: <code>word | definition | part of speech | example</code></p>
+          <h2 className="font-serif text-xl font-semibold">{t("imp.pasteList")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("imp.pasteFormat")}</p>
           <Textarea
             rows={8}
             value={pasted}
@@ -229,27 +223,27 @@ function ImportPage() {
             placeholder={"ephemeral | lasting a very short time | adjective | The ephemeral beauty of cherry blossoms.\nsanguine | optimistic, hopeful | adjective | She remained sanguine about the outcome."}
             className="mt-4 font-mono text-sm"
           />
-          <Button onClick={parsePasted} className="mt-3" variant="outline">Parse list</Button>
+          <Button onClick={parsePasted} className="mt-3" variant="outline">{t("imp.parseList")}</Button>
         </div>
       </div>
 
       {parsed.length > 0 && (
         <div className="paper-card p-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-serif text-xl font-semibold">Preview ({parsed.length})</h2>
+            <h2 className="font-serif text-xl font-semibold">{t("imp.preview")} ({parsed.length})</h2>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setParsed([])}>Discard</Button>
-              <Button onClick={commit} disabled={working}>{working ? "Importing…" : `Import ${parsed.length} words`}</Button>
+              <Button variant="outline" onClick={() => setParsed([])}>{t("imp.discard")}</Button>
+              <Button onClick={commit} disabled={working}>{working ? t("imp.importing") : t("imp.importN", { n: parsed.length })}</Button>
             </div>
           </div>
           <div className="max-h-96 overflow-auto rounded border border-border">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-muted/60 text-xs uppercase tracking-widest text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2 text-left">Word</th>
-                  <th className="px-3 py-2 text-left">Definition</th>
-                  <th className="px-3 py-2 text-left">POS</th>
-                  <th className="px-3 py-2 text-left">Example</th>
+                  <th className="px-3 py-2 text-left">{t("words.colWord")}</th>
+                  <th className="px-3 py-2 text-left">{t("words.colDefinition")}</th>
+                  <th className="px-3 py-2 text-left">{t("imp.colPos")}</th>
+                  <th className="px-3 py-2 text-left">{t("imp.colExample")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -263,7 +257,7 @@ function ImportPage() {
                 ))}
               </tbody>
             </table>
-            {parsed.length > 100 && <div className="p-2 text-center text-xs text-muted-foreground">…and {parsed.length - 100} more</div>}
+            {parsed.length > 100 && <div className="p-2 text-center text-xs text-muted-foreground">{t("imp.andMore", { n: parsed.length - 100 })}</div>}
           </div>
         </div>
       )}
