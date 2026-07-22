@@ -2,9 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Brain, BookOpen, CheckCircle2, Clock, TrendingUp, Flame } from "lucide-react";
+import { BookOpen, CheckCircle2, Clock, TrendingUp, Flame } from "lucide-react";
 import { getStage, STAGES } from "@/lib/sm2";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
+import { useLanguage } from "@/i18n/LanguageProvider";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Lexica" }] }),
@@ -18,6 +19,7 @@ interface Word {
 interface ReviewLog { quality: number; reviewed_at: string; }
 
 function Dashboard() {
+  const { t, language } = useLanguage();
   const [words, setWords] = useState<Word[]>([]);
   const [logs, setLogs] = useState<ReviewLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +43,6 @@ function Dashboard() {
   const totalReviews = words.reduce((s, w) => s + w.review_count, 0);
   const accuracy = totalReviews > 0 ? Math.round(100 * words.reduce((s, w) => s + w.correct_count, 0) / totalReviews) : 0;
 
-  // streak: consecutive days with at least one review (counted in local days)
   const dayKey = (d: Date) => d.toISOString().slice(0, 10);
   const reviewDays = new Set(logs.map((l) => dayKey(new Date(l.reviewed_at))));
   let streak = 0;
@@ -50,40 +51,40 @@ function Dashboard() {
     if (reviewDays.has(dayKey(d))) streak++; else if (i > 0) break;
   }
 
-  // chart: last 14 days
+  const locale = language === "zh" ? "zh-CN" : undefined;
   const chartData = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() - (13 - i));
     const key = dayKey(d);
     const count = logs.filter((l) => dayKey(new Date(l.reviewed_at)) === key).length;
-    return { day: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }), reviews: count };
+    return { day: d.toLocaleDateString(locale, { month: "short", day: "numeric" }), reviews: count };
   });
 
-  // stage distribution (Ebbinghaus stages)
-  const buckets: Record<string, number> = {};
-  for (const s of STAGES) buckets[s.label] = 0;
-  for (const w of words) buckets[getStage(w.repetitions).label]++;
+  // Bucket by stage index so labels stay stable across locales.
+  const buckets: Record<number, number> = {};
+  for (const s of STAGES) buckets[s.index] = 0;
+  for (const w of words) buckets[getStage(w.repetitions).index]++;
 
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-serif text-4xl font-semibold tracking-tight">Your journal</h1>
-          <p className="mt-1 text-muted-foreground">A snapshot of your vocabulary practice.</p>
+          <h1 className="font-serif text-4xl font-semibold tracking-tight">{t("dashboard.title")}</h1>
+          <p className="mt-1 text-muted-foreground">{t("dashboard.subtitle")}</p>
         </div>
-        <Button asChild size="lg"><Link to="/review">Start today's review · {dueToday}</Link></Button>
+        <Button asChild size="lg"><Link to="/review">{t("dashboard.startReview")} · {dueToday}</Link></Button>
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-        <Stat icon={BookOpen} label="Total words" value={totalWords} />
-        <Stat icon={Clock} label="Due now" value={dueToday} accent />
-        <Stat icon={CheckCircle2} label="Mastered" value={mastered} />
-        <Stat icon={TrendingUp} label="Accuracy" value={accuracy + "%"} />
-        <Stat icon={Flame} label="Day streak" value={streak} />
+        <Stat icon={BookOpen} label={t("dashboard.totalWords")} value={totalWords} />
+        <Stat icon={Clock} label={t("dashboard.dueNow")} value={dueToday} accent />
+        <Stat icon={CheckCircle2} label={t("dashboard.mastered")} value={mastered} />
+        <Stat icon={TrendingUp} label={t("dashboard.accuracy")} value={accuracy + "%"} />
+        <Stat icon={Flame} label={t("dashboard.dayStreak")} value={streak} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="paper-card p-6 lg:col-span-2">
-          <h2 className="font-serif text-xl font-semibold">Reviews · last 14 days</h2>
+          <h2 className="font-serif text-xl font-semibold">{t("dashboard.reviewsLast14")}</h2>
           {loading ? <Skeleton /> : (
             <div className="mt-6 h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -100,18 +101,18 @@ function Dashboard() {
         </div>
 
         <div className="paper-card p-6">
-          <h2 className="font-serif text-xl font-semibold">Memory stages</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Based on the forgetting curve · 1/2/4/7/15/30 day schedule</p>
+          <h2 className="font-serif text-xl font-semibold">{t("dashboard.memoryStages")}</h2>
+          <p className="mt-1 text-xs text-muted-foreground">{t("dashboard.stagesHint")}</p>
           <div className="mt-5 space-y-3">
             {STAGES.map((s) => {
-              const n = buckets[s.label] || 0;
+              const n = buckets[s.index] || 0;
               const pct = totalWords ? (n / totalWords) * 100 : 0;
               return (
-                <div key={s.label}>
+                <div key={s.index}>
                   <div className="flex justify-between text-sm">
                     <span className="inline-flex items-center gap-2">
                       <span className="size-2 rounded-full" style={{ background: s.swatch }} />
-                      {s.label}
+                      {t(s.labelKey)}
                     </span>
                     <span className="text-muted-foreground">{n}</span>
                   </div>
@@ -127,11 +128,11 @@ function Dashboard() {
 
       {totalWords === 0 && !loading && (
         <div className="paper-card p-10 text-center">
-          <h3 className="font-serif text-2xl font-semibold">Your journal is empty</h3>
-          <p className="mt-2 text-muted-foreground">Start by adding a few words, or import a list you already have.</p>
+          <h3 className="font-serif text-2xl font-semibold">{t("dashboard.emptyTitle")}</h3>
+          <p className="mt-2 text-muted-foreground">{t("dashboard.emptyBody")}</p>
           <div className="mt-5 flex justify-center gap-3">
-            <Button asChild><Link to="/words">Add a word</Link></Button>
-            <Button asChild variant="outline"><Link to="/import">Import a file</Link></Button>
+            <Button asChild><Link to="/words">{t("dashboard.addWord")}</Link></Button>
+            <Button asChild variant="outline"><Link to="/import">{t("dashboard.importFile")}</Link></Button>
           </div>
         </div>
       )}

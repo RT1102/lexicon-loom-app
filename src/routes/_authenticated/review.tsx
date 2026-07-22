@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { applySM2, getStage } from "@/lib/sm2";
 import { toast } from "sonner";
 import { CheckCircle2 } from "lucide-react";
+import { useLanguage } from "@/i18n/LanguageProvider";
 
 export const Route = createFileRoute("/_authenticated/review")({
   head: () => ({ meta: [{ title: "Review — Lexica" }] }),
@@ -19,6 +20,7 @@ interface Word {
 }
 
 function ReviewPage() {
+  const { t } = useLanguage();
   const [queue, setQueue] = useState<Word[]>([]);
   const [idx, setIdx] = useState(0);
   const [reveal, setReveal] = useState(false);
@@ -60,33 +62,42 @@ function ReviewPage() {
     setIdx(idx + 1);
   }
 
-  if (loading) return <div className="text-center text-muted-foreground">Loading review…</div>;
+  if (loading) return <div className="text-center text-muted-foreground">{t("review.loading")}</div>;
 
   if (!current) {
     return (
       <div className="paper-card mx-auto max-w-xl p-10 text-center">
         <CheckCircle2 className="mx-auto mb-4 size-12 text-success" />
-        <h1 className="font-serif text-3xl font-semibold">All done for now</h1>
+        <h1 className="font-serif text-3xl font-semibold">{t("review.allDoneTitle")}</h1>
         <p className="mt-2 text-muted-foreground">
           {done > 0
-            ? `You reviewed ${done} ${done === 1 ? "word" : "words"}. Come back when the next batch is due.`
-            : "Nothing is due yet. Add more words or wait for the next review."}
+            ? (done === 1 ? t("review.reviewedOne") : t("review.reviewedN", { n: done }))
+            : t("review.nothingDue")}
         </p>
         <div className="mt-6 flex justify-center gap-3">
-          <Button asChild><Link to="/dashboard">Back to dashboard</Link></Button>
-          <Button asChild variant="outline"><Link to="/words">My words</Link></Button>
+          <Button asChild><Link to="/dashboard">{t("review.backDashboard")}</Link></Button>
+          <Button asChild variant="outline"><Link to="/words">{t("review.myWords")}</Link></Button>
         </div>
       </div>
     );
   }
 
+  const stage = getStage(current.repetitions);
+  const stageLabel = t(stage.labelKey);
+  const intervalLabel = stage.intervalDays != null
+    ? t(stage.intervalKey, { n: stage.intervalDays })
+    : t(stage.intervalKey);
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>{idx + 1} / {queue.length} due</span>
-        <span className={"inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium " + getStage(current.repetitions).className}>
-          <span className="size-1.5 rounded-full" style={{ background: getStage(current.repetitions).swatch }} />
-          {getStage(current.repetitions).label}
+        <span>{t("review.dueProgress", { i: idx + 1, n: queue.length })}</span>
+        <span
+          className={"inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium " + stage.className}
+          title={intervalLabel}
+        >
+          <span className="size-1.5 rounded-full" style={{ background: stage.swatch }} />
+          {stageLabel}
         </span>
       </div>
       <div className="h-1 overflow-hidden rounded-full bg-muted">
@@ -100,24 +111,18 @@ function ReviewPage() {
         <h2 className="font-serif text-5xl font-semibold tracking-tight">{current.word}</h2>
 
         {!reveal ? (
-          <Button onClick={() => setReveal(true)} className="mt-10" size="lg">Show meaning</Button>
+          <Button onClick={() => setReveal(true)} className="mt-10" size="lg">{t("review.showMeaning")}</Button>
         ) : (
           <div className="mt-8 space-y-4 text-left">
             {current.definition && (
               <div>
-                <div className="text-xs uppercase tracking-widest text-muted-foreground">Definition</div>
+                <div className="text-xs uppercase tracking-widest text-muted-foreground">{t("review.definition")}</div>
                 <p className="mt-1 text-lg">{current.definition}</p>
-              </div>
-            )}
-            {current.translation && (
-              <div>
-                <div className="text-xs uppercase tracking-widest text-muted-foreground">Translation</div>
-                <p className="mt-1 text-lg">{current.translation}</p>
               </div>
             )}
             {current.example && (
               <div>
-                <div className="text-xs uppercase tracking-widest text-muted-foreground">Example</div>
+                <div className="text-xs uppercase tracking-widest text-muted-foreground">{t("review.example")}</div>
                 <p className="mt-1 italic text-muted-foreground">"{current.example}"</p>
               </div>
             )}
@@ -127,10 +132,10 @@ function ReviewPage() {
 
       {reveal && (
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-          <GradeButton onClick={() => grade(0)} variant="destructive" label="Again" sub="< 1 day" />
-          <GradeButton onClick={() => grade(3)} variant="outline" label="Hard" sub="short" />
-          <GradeButton onClick={() => grade(4)} variant="default" label="Good" sub="normal" />
-          <GradeButton onClick={() => grade(5)} variant="secondary" label="Easy" sub="longer" />
+          <GradeButton onClick={() => grade(0)} variant="destructive" label={t("review.gradeAgain")} sub={t("review.subLtDay")} />
+          <GradeButton onClick={() => grade(3)} variant="outline" label={t("review.gradeHard")} sub={t("review.subShort")} />
+          <GradeButton onClick={() => grade(4)} variant="default" label={t("review.gradeGood")} sub={t("review.subNormal")} />
+          <GradeButton onClick={() => grade(5)} variant="secondary" label={t("review.gradeEasy")} sub={t("review.subLonger")} />
         </div>
       )}
     </div>
