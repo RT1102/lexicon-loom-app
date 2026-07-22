@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Trash2, RotateCcw, Pencil, Search, Folder, FolderPlus, Inbox, GripVertical, X } from "lucide-react";
 import { getStage } from "@/lib/sm2";
 import { toast } from "sonner";
+import { useLanguage } from "@/i18n/LanguageProvider";
 
 export const Route = createFileRoute("/_authenticated/words")({
   head: () => ({ meta: [{ title: "Words — Lexica" }] }),
@@ -30,6 +31,7 @@ interface FolderRow { id: string; name: string; color: string | null; }
 const POS = ["noun", "verb", "adjective", "adverb", "pronoun", "preposition", "conjunction", "interjection", "phrase", "other"];
 
 function WordsPage() {
+  const { t } = useLanguage();
   const [words, setWords] = useState<Word[]>([]);
   const [folders, setFolders] = useState<FolderRow[]>([]);
   const [activeFolder, setActiveFolder] = useState<string | "all" | "unfiled">("all");
@@ -89,7 +91,7 @@ function WordsPage() {
   }
 
   async function save() {
-    if (!editing?.word) return toast.error("Word is required");
+    if (!editing?.word) return toast.error(t("words.wordRequired"));
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) return;
     const payload = {
@@ -110,7 +112,7 @@ function WordsPage() {
       });
       if (error) return toast.error(error.message);
     }
-    toast.success("Saved");
+    toast.success(t("words.saved"));
     setEditing(null);
     load();
   }
@@ -118,7 +120,7 @@ function WordsPage() {
   async function remove(id: string) {
     const { error } = await supabase.from("words").delete().eq("id", id);
     if (error) return toast.error(error.message);
-    toast.success("Word deleted");
+    toast.success(t("words.wordDeleted"));
     load();
   }
 
@@ -130,7 +132,7 @@ function WordsPage() {
     }).eq("id", id);
     if (error) return toast.error(error.message);
     await supabase.from("review_logs").delete().eq("word_id", id);
-    toast.success("Progress reset");
+    toast.success(t("words.progressReset"));
     load();
   }
 
@@ -144,7 +146,7 @@ function WordsPage() {
     }).eq("user_id", u.user.id);
     if (error) return toast.error(error.message);
     await supabase.from("review_logs").delete().eq("user_id", u.user.id);
-    toast.success("All progress reset");
+    toast.success(t("words.allReset"));
     load();
   }
 
@@ -156,12 +158,12 @@ function WordsPage() {
     const { error } = await supabase.from("folders").insert({ user_id: u.user.id, name });
     if (error) return toast.error(error.message);
     setNewFolderName("");
-    toast.success("Folder created");
+    toast.success(t("words.folderCreated"));
     load();
   }
 
   async function renameFolder(id: string) {
-    const name = prompt("Rename folder")?.trim();
+    const name = prompt(t("words.renamePrompt"))?.trim();
     if (!name) return;
     const { error } = await supabase.from("folders").update({ name }).eq("id", id);
     if (error) return toast.error(error.message);
@@ -172,7 +174,7 @@ function WordsPage() {
     const { error } = await supabase.from("folders").delete().eq("id", id);
     if (error) return toast.error(error.message);
     if (activeFolder === id) setActiveFolder("all");
-    toast.success("Folder deleted (words kept)");
+    toast.success(t("words.folderDeleted"));
     load();
   }
 
@@ -180,14 +182,12 @@ function WordsPage() {
     if (wordIds.length === 0) return;
     const { error } = await supabase.from("words").update({ folder_id: folderId }).in("id", wordIds);
     if (error) return toast.error(error.message);
-    toast.success(`Moved ${wordIds.length} ${wordIds.length === 1 ? "word" : "words"}`);
+    toast.success(wordIds.length === 1 ? t("words.movedOne") : t("words.movedOther", { n: wordIds.length }));
     setSelected(new Set());
     load();
   }
 
-  // ---- HTML5 drag handlers ----
   function onWordDragStart(e: React.DragEvent, id: string) {
-    // Drag the selection if the dragged row is selected, otherwise just that row.
     const ids = selected.has(id) ? Array.from(selected) : [id];
     e.dataTransfer.setData("application/x-lexica-words", JSON.stringify(ids));
     e.dataTransfer.effectAllowed = "move";
@@ -214,44 +214,43 @@ function WordsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-serif text-4xl font-semibold tracking-tight">Your words</h1>
-          <p className="mt-1 text-muted-foreground">{words.length} {words.length === 1 ? "entry" : "entries"} in your journal.</p>
+          <h1 className="font-serif text-4xl font-semibold tracking-tight">{t("words.title")}</h1>
+          <p className="mt-1 text-muted-foreground">
+            {words.length === 1 ? t("words.entryOne", { n: words.length }) : t("words.entryOther", { n: words.length })}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline"><RotateCcw className="mr-2 size-4" /> Reset all progress</Button>
+              <Button variant="outline"><RotateCcw className="mr-2 size-4" /> {t("words.resetAll")}</Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Reset all progress?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  All review history and learning stages will be cleared. Your words remain — only the schedule resets.
-                </AlertDialogDescription>
+                <AlertDialogTitle>{t("words.resetAllTitle")}</AlertDialogTitle>
+                <AlertDialogDescription>{t("words.resetAllDesc")}</AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={resetAll}>Yes, reset</AlertDialogAction>
+                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                <AlertDialogAction onClick={resetAll}>{t("words.yesReset")}</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <Button asChild variant="outline"><Link to="/import">Import file</Link></Button>
+          <Button asChild variant="outline"><Link to="/import">{t("words.importFile")}</Link></Button>
           <WordDialog editing={editing} setEditing={setEditing} onSave={save}>
-            <Button onClick={() => setEditing({})}><Plus className="mr-2 size-4" /> Add word</Button>
+            <Button onClick={() => setEditing({})}><Plus className="mr-2 size-4" /> {t("words.addWord")}</Button>
           </WordDialog>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
-        {/* Folder sidebar */}
         <aside className="paper-card p-3 h-fit">
-          <div className="px-2 pt-1 pb-3 text-xs uppercase tracking-widest text-muted-foreground">Folders</div>
+          <div className="px-2 pt-1 pb-3 text-xs uppercase tracking-widest text-muted-foreground">{t("words.foldersHeading")}</div>
           <ul className="space-y-1">
             <FolderItem
               active={activeFolder === "all"}
               onClick={() => setActiveFolder("all")}
               icon={<Inbox className="size-4" />}
-              label="All words"
+              label={t("words.allWords")}
               count={countFor("all")}
             />
             <FolderItem
@@ -262,7 +261,7 @@ function WordsPage() {
               onDragLeave={() => setDragOver(null)}
               onDrop={(e) => onFolderDrop(e, "unfiled")}
               icon={<Folder className="size-4" />}
-              label="Unfiled"
+              label={t("words.unfiled")}
               count={countFor("unfiled")}
             />
             {folders.map((f) => (
@@ -279,6 +278,8 @@ function WordsPage() {
                 count={countFor(f.id)}
                 onRename={() => renameFolder(f.id)}
                 onDelete={() => deleteFolder(f.id)}
+                renameTip={t("words.renameTip")}
+                deleteTip={t("words.deleteFolderTip")}
               />
             ))}
           </ul>
@@ -287,7 +288,7 @@ function WordsPage() {
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && createFolder()}
-              placeholder="New folder…"
+              placeholder={t("words.newFolderPh")}
               className="h-8 text-sm"
             />
             <Button size="sm" variant="outline" className="h-8 px-2" onClick={createFolder}>
@@ -295,7 +296,7 @@ function WordsPage() {
             </Button>
           </div>
           <p className="mt-3 px-2 text-[11px] leading-snug text-muted-foreground">
-            Tip: select words with the checkboxes, then drag any selected row onto a folder.
+            {t("words.dragTip")}
           </p>
         </aside>
 
@@ -303,37 +304,41 @@ function WordsPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="relative max-w-sm flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search words, definitions…" className="pl-9" />
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("words.searchPh")} className="pl-9" />
             </div>
             {selectedCount > 0 && (
               <div className="flex items-center gap-2 rounded-md border border-border bg-secondary/60 px-3 py-1.5 text-sm">
-                <span>{selectedCount} selected</span>
+                <span>{t("words.selectedCount", { n: selectedCount })}</span>
                 <Select onValueChange={(v) => moveWordsToFolder(Array.from(selected), v === "__none__" ? null : v)}>
-                  <SelectTrigger className="h-8 w-[160px]"><SelectValue placeholder="Move to folder…" /></SelectTrigger>
+                  <SelectTrigger className="h-8 w-[160px]"><SelectValue placeholder={t("words.moveToFolder")} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">Unfiled</SelectItem>
+                    <SelectItem value="__none__">{t("words.unfiled")}</SelectItem>
                     {folders.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button size="sm" variant="destructive" className="h-8"><Trash2 className="mr-1 size-4" /> Delete</Button>
+                    <Button size="sm" variant="destructive" className="h-8"><Trash2 className="mr-1 size-4" /> {t("common.delete")}</Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Delete {selectedCount} {selectedCount === 1 ? "word" : "words"}?</AlertDialogTitle>
-                      <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+                      <AlertDialogTitle>
+                        {selectedCount === 1
+                          ? t("words.deleteNTitle", { n: selectedCount })
+                          : t("words.deleteNTitleOther", { n: selectedCount })}
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>{t("words.cannotUndo")}</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                       <AlertDialogAction onClick={async () => {
                         const ids = Array.from(selected);
                         const { error } = await supabase.from("words").delete().in("id", ids);
                         if (error) return toast.error(error.message);
-                        toast.success(`Deleted ${ids.length} ${ids.length === 1 ? "word" : "words"}`);
+                        toast.success(ids.length === 1 ? t("words.deletedOne") : t("words.deletedOther", { n: ids.length }));
                         setSelected(new Set());
                         load();
-                      }}>Delete</AlertDialogAction>
+                      }}>{t("common.delete")}</AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
@@ -344,9 +349,9 @@ function WordsPage() {
 
           <div className="paper-card overflow-hidden">
             {loading ? (
-              <div className="p-10 text-center text-muted-foreground">Loading…</div>
+              <div className="p-10 text-center text-muted-foreground">{t("common.loading")}</div>
             ) : filtered.length === 0 ? (
-              <div className="p-10 text-center text-muted-foreground">No words here yet.</div>
+              <div className="p-10 text-center text-muted-foreground">{t("words.empty")}</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -356,16 +361,20 @@ function WordsPage() {
                         <Checkbox checked={allOnPageSelected} onCheckedChange={toggleSelectAll} />
                       </th>
                       <th className="w-6 px-1 py-3"></th>
-                      <th className="px-4 py-3">Word</th>
-                      <th className="px-4 py-3">Definition</th>
-                      <th className="px-4 py-3">Stage</th>
-                      <th className="px-4 py-3">Next review</th>
-                      <th className="px-4 py-3 text-right">Actions</th>
+                      <th className="px-4 py-3">{t("words.colWord")}</th>
+                      <th className="px-4 py-3">{t("words.colDefinition")}</th>
+                      <th className="px-4 py-3">{t("words.colStage")}</th>
+                      <th className="px-4 py-3">{t("words.colNext")}</th>
+                      <th className="px-4 py-3 text-right">{t("words.colActions")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filtered.map((w) => {
                       const stage = getStage(w.repetitions);
+                      const stageLabel = t(stage.labelKey);
+                      const intervalLabel = stage.intervalDays != null
+                        ? t(stage.intervalKey, { n: stage.intervalDays })
+                        : t(stage.intervalKey);
                       const isSel = selected.has(w.id);
                       return (
                         <tr
@@ -390,10 +399,10 @@ function WordsPage() {
                           <td className="px-4 py-3">
                             <span
                               className={"inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium " + stage.className}
-                              title={stage.intervalLabel}
+                              title={intervalLabel}
                             >
                               <span className="size-1.5 rounded-full" style={{ background: stage.swatch }} />
-                              {stage.label}
+                              {stageLabel}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-muted-foreground">{new Date(w.due_date).toLocaleDateString()}</td>
@@ -402,7 +411,7 @@ function WordsPage() {
                               <WordDialog editing={editing} setEditing={setEditing} onSave={save}>
                                 <Button size="sm" variant="ghost" onClick={() => setEditing(w)}><Pencil className="size-4" /></Button>
                               </WordDialog>
-                              <Button size="sm" variant="ghost" onClick={() => resetOne(w.id)} title="Reset progress"><RotateCcw className="size-4" /></Button>
+                              <Button size="sm" variant="ghost" onClick={() => resetOne(w.id)} title={t("words.resetTip")}><RotateCcw className="size-4" /></Button>
                               <Button size="sm" variant="ghost" onClick={() => remove(w.id)} className="text-destructive hover:text-destructive"><Trash2 className="size-4" /></Button>
                             </div>
                           </td>
@@ -421,7 +430,7 @@ function WordsPage() {
 }
 
 function FolderItem({
-  active, dropActive, onClick, icon, label, count, onRename, onDelete, onDragOver, onDragLeave, onDrop,
+  active, dropActive, onClick, icon, label, count, onRename, onDelete, onDragOver, onDragLeave, onDrop, renameTip, deleteTip,
 }: {
   active: boolean; dropActive?: boolean; onClick: () => void;
   icon: React.ReactNode; label: string; count: number;
@@ -429,6 +438,7 @@ function FolderItem({
   onDragOver?: (e: React.DragEvent) => void;
   onDragLeave?: () => void;
   onDrop?: (e: React.DragEvent) => void;
+  renameTip?: string; deleteTip?: string;
 }) {
   return (
     <li
@@ -447,8 +457,8 @@ function FolderItem({
       <span className="text-xs text-muted-foreground">{count}</span>
       {(onRename || onDelete) && (
         <span className="ml-1 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>
-          {onRename && <button onClick={onRename} className="rounded p-0.5 hover:bg-background" title="Rename"><Pencil className="size-3" /></button>}
-          {onDelete && <button onClick={onDelete} className="rounded p-0.5 text-destructive hover:bg-background" title="Delete folder"><Trash2 className="size-3" /></button>}
+          {onRename && <button onClick={onRename} className="rounded p-0.5 hover:bg-background" title={renameTip}><Pencil className="size-3" /></button>}
+          {onDelete && <button onClick={onDelete} className="rounded p-0.5 text-destructive hover:bg-background" title={deleteTip}><Trash2 className="size-3" /></button>}
         </span>
       )}
     </li>
@@ -456,36 +466,37 @@ function FolderItem({
 }
 
 function WordDialog({ children, editing, setEditing, onSave }: { children: React.ReactNode; editing: Partial<Word> | null; setEditing: (w: Partial<Word> | null) => void; onSave: () => void }) {
+  const { t } = useLanguage();
   const open = editing !== null;
   return (
     <Dialog open={open} onOpenChange={(o) => !o && setEditing(null)}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>{editing?.id ? "Edit word" : "Add a word"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{editing?.id ? t("words.editWord") : t("words.addWordDialog")}</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Word *</Label>
+            <Label>{t("words.wordLabel")}</Label>
             <Input value={editing?.word || ""} onChange={(e) => setEditing({ ...(editing || {}), word: e.target.value })} />
           </div>
           <div className="space-y-2">
-            <Label>Part of speech</Label>
+            <Label>{t("words.partOfSpeech")}</Label>
             <Select value={editing?.part_of_speech || ""} onValueChange={(v) => setEditing({ ...(editing || {}), part_of_speech: v })}>
-              <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t("words.selectPh")} /></SelectTrigger>
               <SelectContent>{POS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Definition</Label>
+            <Label>{t("words.definition")}</Label>
             <Textarea rows={2} value={editing?.definition || ""} onChange={(e) => setEditing({ ...(editing || {}), definition: e.target.value })} />
           </div>
           <div className="space-y-2">
-            <Label>Example sentence</Label>
+            <Label>{t("words.example")}</Label>
             <Textarea rows={2} value={editing?.example || ""} onChange={(e) => setEditing({ ...(editing || {}), example: e.target.value })} />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
-          <Button onClick={onSave}>Save</Button>
+          <Button variant="outline" onClick={() => setEditing(null)}>{t("common.cancel")}</Button>
+          <Button onClick={onSave}>{t("common.save")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
